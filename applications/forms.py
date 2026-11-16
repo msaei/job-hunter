@@ -3,6 +3,25 @@ from pathlib import Path
 from .models import Application, Attachment
 
 
+class AppliedDateFilterForm(forms.Form):
+    applied_from = forms.DateField(
+        required=False, label='Applied from', input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+    applied_through = forms.DateField(
+        required=False, label='Applied through', input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        start = cleaned.get('applied_from')
+        end = cleaned.get('applied_through')
+        if start and end and start > end:
+            raise forms.ValidationError('Applied from must be on or before Applied through.')
+        return cleaned
+
+
 class ApplicationForm(forms.ModelForm):
     class Meta:
         model = Application

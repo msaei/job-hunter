@@ -168,3 +168,53 @@ class CSVTests(TestCase):
             with self.assertRaises(ValueError):
                 parse_csv(content)
         self.assertEqual(Client(enforce_csrf_checks=True).post(self.url, {'action': 'confirm'}).status_code, 403)
+
+
+class AppliedDateFilterTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.early = Application.objects.create(company='Example', role='Engineer', status='applied', applied_on='2026-11-01')
+        cls.late = Application.objects.create(company='Other', role='Designer', applied_on='2026-11-16')
+        cls.undated = Application.objects.create(company='Example', role='Engineer')
+
+    def results(self, params):
+        response = self.client.get(reverse('applications:list'), params)
+        self.assertEqual(response.status_code, 200)
+        return list(response.context['object_list'])
+
+    def test_inclusive_range_and_single_day(self):
+        self.assertCountEqual(self.results({'applied_from': '2026-11-01', 'applied_through': '2026-11-16'}), [self.early, self.late])
+        self.assertEqual(self.results({'applied_from': '2026-11-01', 'applied_through': '2026-11-01'}), [self.early])
+
+    def test_open_ended_and_empty_filters(self):
+        self.assertEqual(self.results({'applied_from': '2026-11-02'}), [self.late])
+        self.assertEqual(self.results({'applied_through': '2026-11-15'}), [self.early])
+        self.assertCountEqual(self.results({}), [self.early, self.late, self.undated])
+
+    def test_combines_with_search_and_status(self):
+        self.assertEqual(self.results({'q': 'Example', 'status': 'applied', 'applied_from': '2026-11-01'}), [self.early])
+        self.assertEqual(self.results({'status': 'applied', 'applied_from': '2026-11-02'}), [])
+
+    def test_invalid_dates_and_reversed_range_show_errors(self):
+        for params in [
+            {'applied_from': 'invalid'}, {'applied_through': '2026-02-30'},
+            {'applied_from': '2026-11-16', 'applied_through': '2026-11-01'},
+        ]:
+            with self.subTest(params=params):
+                response = self.client.get(reverse('applications:list'), params)
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.context['date_filter'].errors)
+                self.assertFalse(response.context['object_list'])
+
+    def test_pagination_retains_filters_and_input_values(self):
+        Application.objects.bulk_create([
+            Application(company='Example', role='Engineer', status='applied', applied_on='2026-11-01')
+            for _ in range(26)
+        ])
+        params = {'q': 'Example', 'status': 'applied', 'applied_from': '2026-11-01', 'applied_through': '2026-11-16'}
+        response = self.client.get(reverse('applications:list'), params)
+        self.assertContains(response, 'applied_from=2026-11-01&amp;applied_through=2026-11-16&amp;page=2')
+        self.assertContains(response, 'value="2026-11-01"')
+        response = self.client.get(reverse('applications:list'), {**params, 'page': 2})
+        self.assertEqual(len(response.context['object_list']), 2)
+        self.assertContains(response, 'applied_through=2026-11-16&amp;page=1')
