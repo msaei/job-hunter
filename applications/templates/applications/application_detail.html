@@ -1,0 +1,38 @@
+{% extends 'applications/base.html' %}
+{% block content %}
+<p><a href="{% url 'applications:list' %}">All applications</a></p>
+<h1>{{ object.role }}</h1>
+<p>{{ object.company }}{% if object.location %} · {{ object.location }}{% endif %}</p>
+<p><a class="button" href="{% url 'applications:edit' object.pk %}">Edit application</a></p>
+<div class="panel"><dl>
+  <dt>Status</dt><dd>{{ object.get_status_display }}</dd>
+  <dt>Applied on</dt><dd>{{ object.applied_on|default:'Not recorded' }}</dd>
+  <dt>Next action</dt><dd>{{ object.next_action|default:'Not set' }}</dd>
+  <dt>Follow-up date</dt><dd>{{ object.follow_up_on|default:'Not set' }}</dd>
+  {% if object.job_url %}<dt>Job posting</dt><dd><a href="{{ object.job_url }}" rel="noreferrer">Open original posting</a></dd>{% endif %}
+</dl></div>
+<section class="panel"><h2>Job description</h2><div class="text">{{ object.description|default:'No description saved.' }}</div></section>
+<section class="panel"><h2>Notes</h2><div class="text">{{ object.notes|default:'No notes yet.' }}</div></section>
+<section class="panel">
+  <h2>Documents &amp; application proof</h2>
+  <p class="muted">Keep the exact documents you submitted and your application confirmation together.</p>
+  {% for attachment in object.attachments.all %}
+  <div class="panel">
+    <strong>{{ attachment.get_kind_display }}</strong><br>
+    <a href="{% url 'applications:download_attachment' object.pk attachment.pk %}">{{ attachment.original_name }}</a>
+    <br><small>{{ attachment.file.size|filesizeformat }} · {{ attachment.uploaded_at|date:'M j, Y, g:i a' }}</small>
+    <form method="post" action="{% url 'applications:remove_attachment' object.pk attachment.pk %}">
+      {% csrf_token %}
+      <p><label><input style="width:auto" type="checkbox" name="confirm" required> Permanently remove this file</label></p>
+      <button type="submit">Remove</button>
+    </form>
+  </div>
+  {% empty %}<p>No attachments yet.</p>{% endfor %}
+  <h3>Add an attachment</h3>
+  <form method="post" enctype="multipart/form-data" action="{% url 'applications:upload_attachment' object.pk %}">
+    {% csrf_token %}
+    {{ attachment_form.as_p }}
+    <button type="submit">Upload attachment</button>
+  </form>
+</section>
+{% endblock %}

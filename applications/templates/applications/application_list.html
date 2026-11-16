@@ -1,0 +1,32 @@
+{% extends 'applications/base.html' %}
+{% block content %}
+<h1>Your applications</h1>
+<p class="muted">Keep track of opportunities and your next move.</p>
+<p><a class="button" href="{% url 'applications:create' %}">Add a job</a></p>
+<p><a href="{% url 'applications:export_csv' %}">Export all applications (CSV)</a> · <a href="{% url 'applications:import_csv' %}">Import CSV</a></p>
+<form method="get" class="filters">
+  <input aria-label="Search company or role" name="q" value="{{ request.GET.q }}" placeholder="Search company or role">
+  <select aria-label="Filter by status" name="status">
+    <option value="">All statuses</option>
+    {% for value, label in statuses %}<option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <button type="submit">Filter</button><a href="{% url 'applications:list' %}">Clear</a>
+</form>
+<div class="panel table-wrap">
+{% if object_list %}
+<table>
+  <thead><tr><th>Opportunity</th><th>Status</th><th>Applied</th><th>Next action</th><th>Follow-up</th></tr></thead>
+  <tbody>{% for application in object_list %}<tr>
+    <td><a href="{{ application.get_absolute_url }}">{{ application.role }}</a><br><small>{{ application.company }}</small></td>
+    <td>{{ application.get_status_display }}</td><td>{{ application.applied_on|default:'—' }}</td>
+    <td>{{ application.next_action|default:'—' }}</td><td>{{ application.follow_up_on|default:'—' }}</td>
+  </tr>{% endfor %}</tbody>
+</table>
+{% else %}<p>No applications found. Add a job or adjust your filters.</p>{% endif %}
+</div>
+{% if is_paginated %}<nav aria-label="Pagination">
+  {% if page_obj.has_previous %}<a href="?q={{ request.GET.q|urlencode }}&amp;status={{ request.GET.status|urlencode }}&amp;page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+  Page {{ page_obj.number }} of {{ paginator.num_pages }}
+  {% if page_obj.has_next %}<a href="?q={{ request.GET.q|urlencode }}&amp;status={{ request.GET.status|urlencode }}&amp;page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+</nav>{% endif %}
+{% endblock %}

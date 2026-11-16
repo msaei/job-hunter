@@ -1,0 +1,10 @@
+{% extends 'applications/base.html' %}
+{% block content %}
+<h1>{% if object %}Edit application{% else %}Save an opportunity{% endif %}</h1>
+<form method="post" class="panel">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Save application</button>
+  <a href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'applications:list' %}{% endif %}">Cancel</a>
+</form>
+{% endblock %}

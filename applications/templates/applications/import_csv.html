@@ -1,0 +1,25 @@
+{% extends 'applications/base.html' %}
+{% block content %}
+<p><a href="{% url 'applications:list' %}">All applications</a></p>
+<h1>Import applications from CSV</h1>
+<p>Start with an <a href="{% url 'applications:export_csv' %}">exported CSV</a> as a template. Required columns: <code>company</code> and <code>role</code>. Dates use YYYY-MM-DD. Up to 1,000 rows / 5 MB, encoded as UTF-8.</p>
+<p>Existing IDs are skipped unless you enable updates. New rows should have a blank ID. Without an ID, matching company and role or matching job URL are skipped; updates require an ID. Missing columns preserve existing values; blank cells clear them. Timestamps are ignored. Attachments are not included or changed.</p>
+{% if error %}<p class="errorlist" role="alert">{{ error }}</p>{% endif %}
+<form class="panel" method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <p><label for="csv-file">CSV file</label><input id="csv-file" type="file" name="file" accept=".csv,text/csv" required></p>
+  <p><label><input type="checkbox" name="update_existing" style="width:auto" {% if update_existing %}checked{% endif %}> Update existing applications using CSV IDs</label></p>
+  <button type="submit">Preview import</button>
+</form>
+{% if results %}
+<h2>Import preview</h2>
+<div class="panel table-wrap"><table>
+  <thead><tr><th>CSV row</th><th>Company</th><th>Role</th><th>Action</th><th>Errors</th></tr></thead>
+  <tbody>{% for row in results %}<tr><td>{{ row.number }}</td><td>{{ row.company }}</td><td>{{ row.role }}</td><td>{{ row.action }}</td><td>{% for error in row.errors %}<div class="errorlist">{{ error }}</div>{% empty %}—{% endfor %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% if can_confirm %}
+<p>Review the actions above. Confirmation saves all valid changes together and never deletes applications.</p>
+<form method="post">{% csrf_token %}<input type="hidden" name="action" value="confirm"><button type="submit">Confirm import</button></form>
+{% endif %}
+{% endif %}
+{% endblock %}
