@@ -8,7 +8,7 @@ from django.utils import timezone
 import csv
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
-from .forms import ApplicationForm, AttachmentForm
+from .forms import ApplicationForm, AttachmentForm, AppliedDateFilterForm
 from .models import Application, Attachment
 from .csv_io import HEADERS, MAX_BYTES, parse_csv, prepare_rows, spreadsheet_cell
 
@@ -19,6 +19,15 @@ class ApplicationList(ListView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        self.date_filter = AppliedDateFilterForm(self.request.GET)
+        if not self.date_filter.is_valid():
+            return queryset.none()
+        start = self.date_filter.cleaned_data.get('applied_from')
+        end = self.date_filter.cleaned_data.get('applied_through')
+        if start:
+            queryset = queryset.filter(applied_on__gte=start)
+        if end:
+            queryset = queryset.filter(applied_on__lte=end)
         query = self.request.GET.get('q', '').strip()
         if query:
             queryset = queryset.filter(Q(company__icontains=query) | Q(role__icontains=query))
@@ -28,7 +37,12 @@ class ApplicationList(ListView):
         return queryset
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(**kwargs, statuses=Application.Status.choices)
+        params = self.request.GET.copy()
+        params.pop('page', None)
+        return super().get_context_data(
+            **kwargs, statuses=Application.Status.choices,
+            date_filter=self.date_filter, filter_query=params.urlencode(),
+        )
 
 
 class ApplicationDetail(DetailView):

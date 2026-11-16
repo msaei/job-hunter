@@ -10,8 +10,12 @@
     <option value="">All statuses</option>
     {% for value, label in statuses %}<option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
   </select>
+  {% for field in date_filter %}
+  <div>{{ field.label_tag }}{{ field }}{{ field.errors }}</div>
+  {% endfor %}
   <button type="submit">Filter</button><a href="{% url 'applications:list' %}">Clear</a>
 </form>
+{{ date_filter.non_field_errors }}
 <div class="panel table-wrap">
 {% if object_list %}
 <table>
@@ -25,8 +29,8 @@
 {% else %}<p>No applications found. Add a job or adjust your filters.</p>{% endif %}
 </div>
 {% if is_paginated %}<nav aria-label="Pagination">
-  {% if page_obj.has_previous %}<a href="?q={{ request.GET.q|urlencode }}&amp;status={{ request.GET.status|urlencode }}&amp;page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+  {% if page_obj.has_previous %}<a href="?{{ filter_query }}&amp;page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
   Page {{ page_obj.number }} of {{ paginator.num_pages }}
-  {% if page_obj.has_next %}<a href="?q={{ request.GET.q|urlencode }}&amp;status={{ request.GET.status|urlencode }}&amp;page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+  {% if page_obj.has_next %}<a href="?{{ filter_query }}&amp;page={{ page_obj.next_page_number }}">Next</a>{% endif %}
 </nav>{% endif %}
 {% endblock %}
